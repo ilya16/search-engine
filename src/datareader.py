@@ -10,20 +10,23 @@ def read_data():
     :return: dictionary of all read documents
     """
     docs = {}
-    for file in DATA_FILES:
-        with open(file, "r") as f:
-            doc, content, doc_id = {}, '', 0
-            for line in f:
-                if re.match(r'Document[ ]+\d+', line):
-                    doc_id = re.search(r'\d+', line).group(0)
-                elif re.match(r'[ ]*[\n]', line):
-                    doc['title'] = content
-                    content = ''
-                elif re.match(r'[*]{3,}', line):
-                    doc['content'] = content
-                    content = ''
-                    docs[doc_id] = doc
-                    doc = {}
-                else:
-                    content += line
+    try:
+        for file in DATA_FILES:
+            with open(file, "r") as f:
+                doc, content, doc_id = {}, '', 0
+                for line in f:
+                    if re.match(r'Document[ ]+\d+', line):
+                        doc_id = re.search(r'\d+', line).group(0)
+                    elif re.match(r'[ ]*[\n]', line):
+                        doc['title'] = content
+                        content = ''
+                    elif re.match(r'[*]{3,}', line):
+                        doc['content'] = content
+                        content = ''
+                        docs[doc_id] = doc
+                        doc = {}
+                    else:
+                        content += line
+    except FileNotFoundError:
+        print("ERROR: Document collection is not found. Make sure that it's located in the directory 'dataset'")
     return docs

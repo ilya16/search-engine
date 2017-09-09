@@ -60,6 +60,7 @@ def build_index(docs, from_dump=False, positional=False):
             index = json.loads(indexfile.read())
     else:
         # building an index
+        print('building an index...')
         for docid in docs:
             doc = docs[docid]
             text = doc['title'] + " " + doc['content']
@@ -90,5 +91,7 @@ def build_index(docs, from_dump=False, positional=False):
         # dumping index
         with open('../results/indexfile', 'w+') as indexfile:
             indexfile.write(json.dumps(index))
+
+        print('index is successfully built')
 
     return index

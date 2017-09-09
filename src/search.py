@@ -1,4 +1,4 @@
-from indexer import preprocess_word
+from indexer import preprocess_word, text2tokens
 import sys
 
 # operators used in search queries with their precedence
@@ -137,7 +137,7 @@ def shunting_yard(query):
     return result
 
 
-def search(docs, index, query, guimode=True):
+def search(docs, index, query):
     """
     Main function of search engine. Searches documents according to the query
     :param docs: dictionary of documents on which search is being applied
@@ -156,8 +156,18 @@ def search(docs, index, query, guimode=True):
         return {}
 
     # termination condition of console mode
-    if not guimode and query[0] == '\q':
+    if query[0] == '\q':
         sys.exit(2)
+
+    # searching for unknown terms in the query
+    unknown_terms = []
+    for word in list(query):
+        if preprocess_word(word, True) not in index and word not in OPERATORS:
+            unknown_terms.append(word)
+
+    if unknown_terms:
+        error_message = "Query contains unknown term(s): {}. Please, try again".format('and '.join(unknown_terms))
+        return {'error_message': error_message}
 
     # filling query with 'OR' operation between terms without any operation
     i, length = 0, len(query)
@@ -173,26 +183,9 @@ def search(docs, index, query, guimode=True):
     # checking if any errors have occurred
     if 'error_message' in query:
         error_message = query['error_message']
-        if guimode:
-            return {'error_message': error_message}
-        else:
-            print("ERROR: " + error_message)
+        return {'error_message': error_message}
 
     # print(query)
-
-    # searching for unknown terms in the query
-    unknown_terms = []
-    for word in list(query):
-        if word not in index and word not in OPERATORS:
-            unknown_terms.append(word)
-
-    if unknown_terms:
-        error_message = "Query contains unknown term(s): {}. Please, try again".format('and '.join(unknown_terms))
-        if guimode:
-            return {'error_message': error_message}
-        else:
-            print("ERROR: " + error_message)
-            return
 
     results_stack = []
     while query:
@@ -206,33 +199,23 @@ def search(docs, index, query, guimode=True):
         try:
             # applying 'AND'/'OR' operation for two terms
             if token == 'AND' or token == 'OR':
-                left_term = results_stack.pop(0)
-                right_term = results_stack.pop(0)
-                result = intersect(left_term, right_term, token)
+                result = intersect(results_stack.pop(), results_stack.pop(), token)
 
             # applying 'NOT' operation for the term
             if token == 'NOT':
-                term = results_stack.pop(0)
-                result = []
+                term = results_stack.pop()
                 for docid in docs:
                     if docid not in term:
                         result.append(docid)
         except IndexError:
             error_message = "Query is not correct. Modify it by adding/removing operators 'AND'/'OR'/'NOT'"
-            if guimode:
-                return {'error_message': error_message}
-            else:
-                print("ERROR: " + error_message)
+            return {'error_message': error_message}
 
         results_stack.append(result)
 
     if len(results_stack) != 1:
         error_message = "Query is not correct. Modify it by adding/removing operators 'AND'/'OR'/'NOT'"
-        if guimode:
-            return {'error_message': error_message}
-        else:
-            print("ERROR: " + error_message)
-            return
+        return {'error_message': error_message}
 
     docids = results_stack.pop()
 

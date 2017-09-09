@@ -2,8 +2,8 @@ from datareader import read_data
 from indexer import build_index
 from search import search
 from tkinter import *
-from tkinter.filedialog import *
 import os
+import sys
 
 
 class GUI:
@@ -33,7 +33,7 @@ class GUI:
         self.show_docs_btn = Button(self.tools_frame, text="Show all documents", command=self.open_docsfile)
         self.prev_doc_btn = Button(self.tools_frame, text="Prev doc")
         self.next_doc_btn = Button(self.tools_frame, text="Next doc")
-        self.tip = Message(self.tools_frame, text="*click on the number in the results list to show the document")
+        self.tip = Message(self.tools_frame, text="*click on the number in the results list to display the document")
 
         # defining positions and sizes of frames
         self.results_frame.place(x=20, y=80, width=760, height=200)
@@ -211,13 +211,45 @@ class GUI:
 
 
 if __name__ == '__main__':
+    dictionary_file = postings_file = queries_file = output_file = None
+
+    guimode = None
+    if len(sys.argv) == 1:
+        guimode = True
+    elif sys.argv[1] == 'gui':
+        guimode = False
+    elif sys.argv[1] == 'console':
+        guimode = False
+    else:
+        print("ERROR: Incorrect arguments supplied")
+        print("Run either app.py or app.py console")
+        sys.exit(2)
+
     docs = read_data()
     index = build_index(docs, from_dump=True)
 
-    mode = "gui"
-    if mode == "gui":
+    if guimode:
         gui = GUI()
     else:
         while True:
             print("Enter query: ", end="")
-            search(docs, index, input())
+            result = search(docs, index, input())
+
+            if 'error_message' in result:
+                print("ERROR: " + result['error_message'])
+            elif 'docids' in result:
+                if len(result['docids']) > 0:
+                    # working with results
+                    print("Results found: " + str(len(result['docids'])))
+                    print(">to show all document ids type 'ids'")
+                    print(">to show all documents type 'docs'")
+                    print(">to write another query type anything else")
+                    txt = input()
+                    if txt == 'ids':
+                        for docid in result['docids']:
+                            print(docid, end=" ")
+                        print()
+                    elif txt == 'docs':
+                        os.system("open " + '../results/lastquery.txt')
+                else:
+                    print("Nothing found. Try another query")
