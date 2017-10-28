@@ -265,12 +265,11 @@ def ranked_retrieval(docs, index, query):
     scores.sort(key=lambda score: score[1], reverse=True)
     # print(scores)
 
-    results = []
-    for i in range(min(20, len(scores))):
-        results.append(scores[i])
-    results = scores
+    # results = []
+    # for i in range(min(20, len(scores))):
+    #     results.append(scores[i])
 
-    return results
+    return scores
 
 
 def search(docs, index, query, rankedmode=True):

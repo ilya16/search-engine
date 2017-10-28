@@ -150,7 +150,7 @@ class GUI:
             row, rows, column, columns = 1, 8, 1, 15
         items_number = rows * columns
 
-        rank = 1
+        rank = page * items_number + 1
         for doc in docs[page * items_number: min((page + 1) * items_number, len(self.retrieved_docs))]:
             docid = doc[0]
             score = doc[1]
@@ -246,7 +246,7 @@ class GUI:
         for token in query_tokens:
             pos = '1.0'
             while True:
-                keyword = r'' + token.upper() + '\W'
+                keyword = '\y' + token.upper() + '\y'
                 idx = self.document.search(keyword, pos, END, regexp=True)
                 if not idx:
                     break
