@@ -1,5 +1,5 @@
-# Search Engine based on Boolean Retrieval Model
-This is a Python implementation of search engine. Index file is built using LISA documents collection and search is based on Boolean Retrieval Model. Search queries support operators `AND`, `OR`, `NOT`, `(` and `)`.
+# Search Engine based on Ranked Retrieval Model
+This is a Python implementation of search engine. Index file is built using LISA documents collection and search by default is based on Ranked Retrieval Model, but also implements Boolean Retrieval Model which search queries support operators `AND`, `OR`, `NOT`, `(` and `)`.
 
 ## Installation:
 1. Make sure you have a `Python 3` interpreter on your machine. The preferable version is `Python 3.6`, because solution was tested on this version.

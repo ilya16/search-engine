@@ -240,6 +240,19 @@ class GUI:
         self.document.delete(1.0, END)
         self.document.insert(END, txt)
 
+        # highlighting search query terms in the document
+        self.document.tag_config('query', background='yellow')
+        query_tokens = self.query.split()
+        for token in query_tokens:
+            pos = '1.0'
+            while True:
+                keyword = r'' + token.upper() + '\W'
+                idx = self.document.search(keyword, pos, END, regexp=True)
+                if not idx:
+                    break
+                pos = '{}+{}c'.format(idx, len(token))
+                self.document.tag_add('query', idx, pos)
+
     def open_docsfile(self):
         os.system("open " + '../results/lastquery.txt')
 

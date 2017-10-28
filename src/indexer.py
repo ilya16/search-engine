@@ -35,7 +35,7 @@ def build_index(docs, from_dump=False, positional=False):
         for docid in docs:
             doc = docs[docid]
             text = doc['title'] + " " + doc['content']
-            tokens = text2tokens(text, stem=True)
+            tokens = text2tokens(text, stem=False)
 
             if positional:
                 for pos in range(len(tokens)):

@@ -128,7 +128,7 @@ def shunting_yard(query):
 
         else:
             # adding operands to the result list
-            result.append(preprocess_word(token, stem=True))
+            result.append(preprocess_word(token, stem=False))
 
     while operator_stack:
         # popping all operators into the result list
@@ -218,7 +218,7 @@ def ranked_retrieval(docs, index, query):
     # preprocessing query terms and computing tf values
     query_terms = {}
     for token in query:
-        token = preprocess_word(token, stem=True)
+        token = preprocess_word(token, stem=False)
         if token not in query_terms:
             query_terms[token] = 1.0
         else:
@@ -293,7 +293,7 @@ def search(docs, index, query, rankedmode=True):
     # searching for unknown terms in the query
     unknown_terms = []
     for word in list(query):
-        if preprocess_word(word, stem=True) not in index and word not in OPERATORS:
+        if preprocess_word(word, stem=False) not in index and word not in OPERATORS:
             unknown_terms.append(word)
 
     if unknown_terms and not rankedmode:

@@ -68,7 +68,7 @@ def load_stats(docs, from_dump=True):
             doc = docs[docid]
             length = 0.0
 
-            tokens = text2tokens(doc['title'] + " " + doc['content'], stem=True)
+            tokens = text2tokens(doc['title'] + " " + doc['content'], stem=False)
             tokens.sort()
 
             lasttoken = ''
