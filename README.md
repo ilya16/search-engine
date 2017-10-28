@@ -14,4 +14,6 @@ or download the archive with the system by following the link [`https://goo.gl/m
     GUI mode is run by executing `python app.py`
     
     Console mode is run by executing `python app.py console`
-5. If previous steps are completed without any errors, application should run in one-two seconds. If there is no file `results/indexfile`, index will be built from scratch in up to 10 seconds.
+    
+    Console mode with Boolean Retrieval is run by executing `python app.py console bool`
+5. If previous steps are completed without any errors, application should run in one-two seconds. If there is no file `results/indexfile`, index will be built from scratch in up to 20 seconds.

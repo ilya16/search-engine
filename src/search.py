@@ -1,5 +1,5 @@
-from indexer import preprocess_word, text2tokens
-import sys
+from preprocess import preprocess_word
+import math
 
 # operators used in search queries with their precedence
 OPERATORS = {'NOT': 3, 'AND': 2, 'OR': 1, '(': 0, ')': 0}
@@ -40,7 +40,7 @@ def intersect(p1, p2, op='OR'):
 def intersect_pos(p1, p2, k):
     """
     Merges two postings according using positional index
-    (currently suuports only 'AND' operation)
+    (currently supports only 'AND' operation)
     :param p1: posting of the first term
     :param p2: posting of the second term
     :param k: distance between terms
@@ -128,7 +128,7 @@ def shunting_yard(query):
 
         else:
             # adding operands to the result list
-            result.append(preprocess_word(token, True))
+            result.append(preprocess_word(token, stem=True))
 
     while operator_stack:
         # popping all operators into the result list
@@ -137,37 +137,14 @@ def shunting_yard(query):
     return result
 
 
-def search(docs, index, query):
+def boolean_retrieval(docs, index, query):
     """
-    Main function of search engine. Searches documents according to the query
+    Boolean Retrieval search.
     :param docs: dictionary of documents on which search is being applied
     :param index: index built for the documents collection
-    :param query: string value on which search is being applied
-    :param guimode: mode of the application
-    :return:
+    :param query: list of query tokens
+    :return: ids of found documents or an error message
     """
-
-    # query modification
-    init_query = query
-    query = query.replace('(', '( ').replace(')', ' )').split()
-
-    # empty query
-    if not query:
-        return {}
-
-    # termination condition of console mode
-    if query[0] == '\q':
-        sys.exit(2)
-
-    # searching for unknown terms in the query
-    unknown_terms = []
-    for word in list(query):
-        if preprocess_word(word, True) not in index and word not in OPERATORS:
-            unknown_terms.append(word)
-
-    if unknown_terms:
-        error_message = "Query contains unknown term(s): {}. Please, try again".format('and '.join(unknown_terms))
-        return {'error_message': error_message}
 
     # filling query with 'OR' operation between terms without any operation
     i, length = 0, len(query)
@@ -217,22 +194,166 @@ def search(docs, index, query):
         error_message = "Query is not correct. Modify it by adding/removing operators 'AND'/'OR'/'NOT'"
         return {'error_message': error_message}
 
-    docids = results_stack.pop()
+    results = []
+    for docid in results_stack.pop():
+        results.append((docid, 'N/A'))
+
+    return results
+
+
+def ranked_retrieval(docs, index, query):
+    """
+    Ranked Retrieval search.
+    :param docs: dictionary of documents on which search is being applied
+    :param index: index built for the documents collection
+    :param query: list of query tokens
+    :return: ids of found documents with scores or an error message
+    """
+
+    query.sort()
+
+    ndocs = len(docs)
+    scores = {}
+
+    # preprocessing query terms and computing tf values
+    query_terms = {}
+    for token in query:
+        token = preprocess_word(token, stem=True)
+        if token not in query_terms:
+            query_terms[token] = 1.0
+        else:
+            query_terms[token] += 1.0
+
+    # computing tf-idf values for query terms and query length
+    query_weights = {}
+    query_length = 0.0
+    for term, tf in query_terms.items():
+        ltf = 1 + math.log10(tf)
+        df = len(index[term])
+        idf = math.log(ndocs / df)
+
+        query_weights[term] = ltf * idf
+        query_length += math.pow(query_weights[term], 2)
+
+    query_length = math.sqrt(query_length)
+
+    # computing normalized term weights
+    for term, w in query_weights.items():
+        query_weights[term] = w / query_length
+
+    # print(query_weights, query_length)
+
+    # computing cosine scores for each document that contains at least one term from the query
+    for term, w in query_weights.items():
+        posting = index[term]
+        for docid, tf in posting.items():
+            ltf = 1 + math.log10(int(tf))
+            if docid not in scores:
+                scores[docid] = w * ltf
+            else:
+                scores[docid] += w * ltf
+
+    scores = list(scores.items())
+
+    # scores.sort(key=lambda score: score[1], reverse=True)
+    # print(scores)
+
+    # normalizing cosine scores by document length
+    for i in range(len(scores)):
+        scores[i] = (scores[i][0], scores[i][1] / docs[scores[i][0]]['length'])
+
+    scores.sort(key=lambda score: score[1], reverse=True)
+    # print(scores)
+
+    results = []
+    for i in range(min(20, len(scores))):
+        results.append(scores[i])
+    results = scores
+
+    return results
+
+
+def search(docs, index, query, rankedmode=True):
+    """
+    Main function of search engine. Searches documents according to the query
+    :param docs: dictionary of documents on which search is being applied
+    :param index: index built for the documents collection
+    :param query: string value on which search is being applied
+    :return:
+    """
+
+    # query modification
+    init_query = query
+    query = query.replace('(', '( ').replace(')', ' )').split()
+
+    # empty query
+    if not query:
+        return {}
+
+    # searching for unknown terms in the query
+    unknown_terms = []
+    for word in list(query):
+        if preprocess_word(word, stem=True) not in index and word not in OPERATORS:
+            unknown_terms.append(word)
+
+    if unknown_terms and not rankedmode:
+        error_message = "Query contains unknown term(s): {}. Please, try again".format('and '.join(unknown_terms))
+        return {'error_message': error_message}
+
+    if rankedmode:
+        query = [token for token in query if token not in unknown_terms and token not in OPERATORS]
+        results = ranked_retrieval(docs, index, query)
+    else:
+        results = boolean_retrieval(docs, index, query)
+
+    if 'error_message' in results:
+        return results
 
     with open('../results/lastqueryids.txt', 'w+') as f:
-        f.write('Query: "' + init_query + '"\n')
-        f.write("Found: " + str(len(docids)) + " documents\n")
-        f.write("Document ids:\n\n")
-        for docid in docids:
-            f.write(docid + " ")
+        f.write('Query: "%s"\n' % init_query)
+
+        if rankedmode:
+            outresults = results[:20]
+            f.write("Mode: Ranked Retrieval\n")
+            f.write("Found: %d documents\n" % len(results))
+            f.write("Top %d documents with scores: \n\n" % len(outresults))
+        else:
+            outresults = results
+            f.write("Mode: Boolean Retrieval\n")
+            f.write("Found: %d documents\n\n" % len(results))
+
+        rank = 1
+        for doc in outresults:
+            if rankedmode:
+                f.write("%2d. " % rank)
+                f.write('%4s (%.5s)\n' % (doc[0], doc[1]))
+                rank += 1
+            else:
+                f.write('%s ' % doc[0])
 
     with open('../results/lastquery.txt', 'w+') as f:
-        f.write('Query: "' + init_query + '"\n')
-        f.write("Found: " + str(len(docids)) + " documents\n")
-        f.write("Documents:\n\n")
-        for docid in docids:
-            f.write("Document " + docid)
-            f.write("\n" + docs[docid]['title'] + "\n" + docs[docid]['content'])
+        f.write('Query: "%s"\n' % init_query)
+
+        if rankedmode:
+            outresults = results[:20]
+            f.write("Mode: Ranked Retrieval\n")
+            f.write("Found: %d documents\n" % len(results))
+            f.write("Top %d documents with scores: \n\n" % len(outresults))
+        else:
+            outresults = results
+            f.write("Mode: Boolean Retrieval\n")
+            f.write("Found: %d documents\n\n" % len(results))
+
+        rank = 1
+        for doc in outresults:
+            if rankedmode:
+                f.write("%d. " % rank)
+                rank += 1
+            f.write("Document %s " % doc[0])
+            if rankedmode:
+                f.write("(%.5s)" % doc[1])
+            f.write("\n")
+            f.write(docs[doc[0]]['title'] + "\n" + docs[doc[0]]['content'])
             f.write("********************************************\n")
 
-    return {'docids': docids}
+    return {'results': results}
